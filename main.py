@@ -1,3 +1,6 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtCore import Qt
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -97,25 +100,46 @@ def add_new_column(table):
         col.set(qn('w:w'), str(new_width))
 
 
-def main():
-    try:
-        # Load dokumen Word
-        doc = Document('input.docx')
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-        # Proses setiap tabel dalam dokumen
-        for table in doc.tables:
-            remove_nested_tables(table)
-            remove_extra_columns(table)
-            add_new_column(table)
+        self.setWindowTitle("Document Processor")
 
-        # Simpan dokumen yang telah dimodifikasi
-        doc.save('output.docx')
+        button = QPushButton("Select & Process .docx File")
+        button.clicked.connect(self.process_file)
+        self.setCentralWidget(button)
 
-        print(
-            "Tabel dalam sel berhasil dihapus. Dokumen baru tersimpan sebagai 'output.docx'")
-    except Exception as e:
-        print(f"Terjadi kesalahan: {str(e)}")
+    def process_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select a .docx file", "", "Word Documents (*.docx);;All Files (*)"
+        )
+        if not file_path:
+            return
+
+        try:
+            doc = Document(file_path)
+            # Proses setiap tabel dalam dokumen
+            for table in doc.tables:
+                remove_nested_tables(table)
+                remove_extra_columns(table)
+                add_new_column(table)
+
+            save_path, _ = QFileDialog.getSaveFileName(
+                self, "Save the processed file as", "", "Word Documents (*.docx);;All Files (*)"
+            )
+            if not save_path:
+                return
+
+            doc.save(save_path)
+            QMessageBox.information(
+                self, "Success", f"File processed and saved at:\n{save_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred:\n{e}")
 
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
